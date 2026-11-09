@@ -6,7 +6,7 @@
 - 时效：优先最近 72 小时内的内容。
 - 数量：每天 1 到 3 条，宁缺毋滥。没有好素材时，写一篇把已收内容串起来的实操小结，或者更新旧条目。
 - 去重：收录前先查 README 索引和各目录，已收过的链接不再重复收。
-- 范围：只收 selfhost、devtools、security 三类。AI 编程代理、A 股量化、免费云资源不收。
+- 范围：只收 selfhost、devtools、scripts、security 四类。AI 编程代理、A 股量化、免费云资源不收。
 
 ## 不收
 
@@ -18,6 +18,7 @@
 ## 文件
 
 - 按主题放进 `selfhost/`、`devtools/` 或 `security/`。
+- 脚本放进 `scripts/`，文件名用英文短名（如 `scripts/cert-expiry-check.sh`），开头注释写用途、用法、依赖，并在 `scripts/README.md` 的清单里加一行和一段说明。脚本必须实际跑过：Bash 过 shellcheck，Python 过 `python3 -m py_compile`；删除、修改类操作默认 dry-run。脚本代码按 MIT 授权。
 - 文件名：`YYYY-MM-DD-short-name.md`，日期用收录当天，短名用英文小写和连字符。
 - 同时在根目录 README.md 的索引里加一行（放在 `<!-- INDEX:START -->` 下面，按日期倒序）：
 

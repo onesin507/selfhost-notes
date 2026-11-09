@@ -6,9 +6,10 @@ This repository uses two licenses:
    Creative Commons Attribution 4.0 International License (CC BY 4.0).
    笔记正文采用 CC BY 4.0 授权。
 
-2. Code and configuration snippets inside the notes are licensed under
-   the MIT License (full text at the end of this file).
-   笔记中的命令和配置片段采用 MIT 许可证。
+2. Code and configuration snippets inside the notes, and all scripts
+   under the scripts/ directory, are licensed under the MIT License
+   (full text at the end of this file).
+   笔记中的命令和配置片段，以及 scripts/ 目录下的所有脚本，采用 MIT 许可证。
 
 Copyright of the original posts and articles that are summarized belongs
 to their respective authors and is not covered by either license. Every

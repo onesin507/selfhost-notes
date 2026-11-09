@@ -6,12 +6,13 @@ Self-hosting, dev tools & server hardening notes, written in Chinese.
 
 每天从 linux.do、V2EX、Hacker News、Lobsters、GitHub Trending、Reddit（r/selfhosted、r/linux、r/sysadmin 等）、少数派等社区挑 1 到 3 条有干货的帖子、文章或项目，用自己的话写成实操笔记，附上原链接。能给出命令或配置的，尽量给一段可以直接改了用的示例。
 
-## 三个主题
+## 四个主题
 
 | 目录 | 内容 |
 | --- | --- |
 | [selfhost/](selfhost/) | 自建服务与 Linux 运维：Docker / Podman、反向代理、备份、监控、systemd、家用服务器、小内存 VPS 调优。 |
 | [devtools/](devtools/) | 好用的开源工具和效率技巧：命令行工具、终端、Git 技巧、编辑器配置、自动化脚本。 |
+| [scripts/](scripts/) | 自己写、实际跑过的小脚本（Bash、Python 为主）：证书到期检查、备份轮转、磁盘告警、Git 批量操作等。清单见 [scripts/README.md](scripts/README.md)。 |
 | [security/](security/) | 服务器安全加固：SSH 加固、防火墙、fail2ban、证书、密钥和机密管理、日志审计、常见漏洞的修复。只写防御，不写攻击教程。 |
 
 ## 不收什么
@@ -34,6 +35,8 @@ Self-hosting, dev tools & server hardening notes, written in Chinese.
 按日期倒序，每条一行：日期 · 主题 · 标题。
 
 <!-- INDEX:START -->
+- 2026-11-09 · scripts · [cert-expiry-check.sh：检查站点和本地证书还剩几天过期](scripts/README.md#cert-expiry-checksh)
+- 2026-11-09 · devtools · [libghostty-vt 1.0：Ghostty 的终端内核拆成独立 C 库，JetBrains 和 Neovim 都在用](devtools/2026-11-09-libghostty-vt-1-0.md)
 - 2026-11-09 · security · [Outlook.com 开始拒收没有 DMARC 记录的域名的邮件：补一条 p=none](security/2026-11-09-outlook-dmarc-p-none.md)
 - 2026-11-09 · selfhost · [nspawn 3.0：用 docker 命令管理 systemd-nspawn 容器](selfhost/2026-11-09-nspawn-3-docker-api.md)
 - 2026-11-09 · selfhost · [512 MB 内存的 10 美元小盒子能跑哪些自建服务](selfhost/2026-11-09-openstick-512mb-homelab.md)
@@ -43,6 +46,7 @@ Self-hosting, dev tools & server hardening notes, written in Chinese.
 
 - 笔记正文：[知识共享 署名 4.0 国际许可协议（CC BY 4.0）](https://creativecommons.org/licenses/by/4.0/deed.zh-hans)，转载请注明出处。
 - 笔记里的命令和配置片段：MIT 许可证，可以随意复制使用。
+- `scripts/` 目录下的脚本代码：MIT 许可证。
 - 被引用、被总结的原帖和原文，版权归各自原作者所有，不在上述许可范围内；每条笔记都附有原文链接。
 
-Notes are licensed under [CC BY 4.0](LICENSE); code and config snippets in the notes are MIT-licensed. Copyright of the original posts belongs to their authors; every entry links to its source.
+Notes are licensed under [CC BY 4.0](LICENSE); code and config snippets in the notes, and all scripts under `scripts/`, are MIT-licensed. Copyright of the original posts belongs to their authors; every entry links to its source.
