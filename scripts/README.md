@@ -13,6 +13,7 @@
 
 | 脚本 | 语言 | 用途 | 收录日期 |
 | --- | --- | --- | --- |
+| [apache-h2-cve-check.sh](apache-h2-cve-check.sh) | Bash | 检查本机 Apache 有没有中 CVE-2026-119618（mod_http2 远程代码执行） | 2026-11-14 |
 | [cert-expiry-check.sh](cert-expiry-check.sh) | Bash | 检查线上站点和本地证书文件还剩几天过期，用退出码告警 | 2026-11-09 |
 
 ## cert-expiry-check.sh
@@ -67,3 +68,34 @@ out=$(/usr/local/bin/cert-expiry-check.sh -q -f /etc/cert-targets.txt) || your-n
 - 本地文件只读第一张证书，`fullchain.pem` 和 `cert.pem` 的第一张都是叶子证书，结果一样。
 - 端口只支持 `主机名:端口` 写法，不支持裸 IPv6 地址。需要 STARTTLS 的端口（比如 SMTP 587）不在支持范围里，只支持一连上就是 TLS 的端口，如 443、993、995、465。
 - macOS 自带的 date 不是 GNU 版，要先装 coreutils。
+
+## apache-h2-cve-check.sh
+
+检查本机的 Apache 有没有中 2026-11-11 公布的 CVE-2026-119618（mod_http2 远程代码执行，背景见 [这篇笔记](../security/2026-11-14-apache-mod-http2-rce.md)）。它看三件事：apache2 的包版本有没有到各发行版的修复版本、mod_http2 有没有加载、生效的配置里有没有 `Protocols h2` / `h2c`。只读，不改配置，不重启服务。
+
+Debian / Ubuntu 上按**包版本**判断，因为发行版会把补丁回移植到旧的 2.4.x 版本号上。别的系统没有 dpkg，就按上游版本号判断（受影响的是 2.4.55 至 2.4.70），红帽系请再对照厂商公告。修复版本表是 2026-11-14 抄的，之后可能更新。
+
+**依赖**：bash 4+、coreutils、grep；Debian / Ubuntu 上用 dpkg。读模块列表和完整配置一般要 sudo。
+
+**常用写法**（示例）：
+
+```sh
+# 在要检查的机器上跑
+sudo ./apache-h2-cve-check.sh
+
+# 放进 cron 或批量巡检：-q 只在有问题时输出，退出码非 0 就要处理
+sudo ./apache-h2-cve-check.sh -q || echo "这台的 Apache 要处理"
+
+# 不在本机跑：把别的机器 dpkg-query -W apache2 的版本贴进来，配上发行版代号
+./apache-h2-cve-check.sh -P 2.4.58-1ubuntu8.18 -C noble
+```
+
+结论有三种：
+
+- **OK**：已修复，或者根本没装 Apache。
+- **WARN**：版本没修，但 HTTP/2 没开；或者有一项判断不了，比如没用 sudo 读不到模块列表。
+- **CRIT**：版本没修，而且 HTTP/2 开着，要尽快升级。暂时升不了，就先把 `Protocols` 改成只留 `http/1.1`。
+
+**退出码**：0 OK，1 WARN，2 CRIT，64 用法错误。
+
+**实测**：在 Ubuntu 26.04 上装了 apache2 2.4.66-2ubuntu2.8（已修复版）跑过。分别试了 HTTP/2 开、关，用 sudo 和不用 sudo，还把修复版本临时改高来模拟“没修”，三种结论和退出码都对得上。另外用假的 `httpd` 测了上游版本号的边界：2.4.54 和 2.4.71 判为 OK，2.4.55 和 2.4.70 判为 CRIT。脚本过了 shellcheck。
