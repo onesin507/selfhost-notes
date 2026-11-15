@@ -35,6 +35,8 @@ Self-hosting, dev tools & server hardening notes, written in Chinese.
 按日期倒序，每条一行：日期 · 主题 · 标题。
 
 <!-- INDEX:START -->
+- 2026-11-15 · security · [PostgreSQL 18.7 / 17.12 / 16.16 / 15.20 / 14.25 修了 52 个 CVE：普通账号就能执行系统命令，怎么查、怎么升](security/2026-11-15-postgresql-nov-2026-cves.md)
+- 2026-11-15 · scripts · [pg-cve-2026-6460-check.sh：检查本机和容器里的 PostgreSQL 有没有修](scripts/README.md#pg-cve-2026-6460-checksh)
 - 2026-11-14 · security · [Apache 2.4.71 修了 mod_http2 远程代码执行漏洞 CVE-2026-119618：怎么查、怎么修](security/2026-11-14-apache-mod-http2-rce.md)
 - 2026-11-14 · scripts · [apache-h2-cve-check.sh：检查本机 Apache 有没有中 CVE-2026-119618](scripts/README.md#apache-h2-cve-checksh)
 - 2026-11-14 · devtools · [GitHub Actions 有锁文件了：用 gh actions-lock 锁住 Actions 依赖，不用再手写 SHA](devtools/2026-11-14-github-actions-lockfile.md)

@@ -13,6 +13,7 @@
 
 | 脚本 | 语言 | 用途 | 收录日期 |
 | --- | --- | --- | --- |
+| [pg-cve-2026-6460-check.sh](pg-cve-2026-6460-check.sh) | Bash | 检查本机和 Docker / Podman 容器里的 PostgreSQL 有没有修 2026-11-12 这批漏洞（CVE-2026-6460 等） | 2026-11-15 |
 | [apache-h2-cve-check.sh](apache-h2-cve-check.sh) | Bash | 检查本机 Apache 有没有中 CVE-2026-119618（mod_http2 远程代码执行） | 2026-11-14 |
 | [cert-expiry-check.sh](cert-expiry-check.sh) | Bash | 检查线上站点和本地证书文件还剩几天过期，用退出码告警 | 2026-11-09 |
 
@@ -68,6 +69,40 @@ out=$(/usr/local/bin/cert-expiry-check.sh -q -f /etc/cert-targets.txt) || your-n
 - 本地文件只读第一张证书，`fullchain.pem` 和 `cert.pem` 的第一张都是叶子证书，结果一样。
 - 端口只支持 `主机名:端口` 写法，不支持裸 IPv6 地址。需要 STARTTLS 的端口（比如 SMTP 587）不在支持范围里，只支持一连上就是 TLS 的端口，如 443、993、995、465。
 - macOS 自带的 date 不是 GNU 版，要先装 coreutils。
+
+## pg-cve-2026-6460-check.sh
+
+检查本机的 PostgreSQL 有没有修 2026-11-12 公布的那批漏洞，以 CVE-2026-6460（普通账号借 `ALTER ... SET DATA TYPE` 执行系统命令）为代表，背景见 [这篇笔记](../security/2026-11-15-postgresql-nov-2026-cves.md)。它会找三处：本机装的服务端程序、正在跑的 Docker / Podman 容器（镜像名带 postgres、postgis、timescale、pgvector 的），加 `-c` 时再用 psql 连上正在跑的库读 `server_version`。按小版本号判断，修复版是 18.7、17.12、16.16、15.20、14.25。只读，不改配置，不重启服务，不拉镜像。
+
+Debian、Ubuntu 和 PostgreSQL 官方 apt 源都直接用上游小版本号，所以看版本号就准。红帽系可能把补丁回移植到旧版本号上，结论只作参考。修复版本是 2026-11-15 从官方公告抄的。
+
+**依赖**：bash 4+、grep、sed；查容器要能执行 docker 或 podman（一般要 sudo 或在 docker 组里）；`-c` 要有 psql。
+
+**常用写法**（示例）：
+
+```sh
+# 查本机和容器
+sudo ./pg-cve-2026-6460-check.sh
+
+# 连上正在跑的库，确认重启后真的是新版本
+sudo -u postgres ./pg-cve-2026-6460-check.sh -c
+
+# 放进 cron：只在有问题时输出
+sudo ./pg-cve-2026-6460-check.sh -q || echo "这台的 PostgreSQL 要处理"
+
+# 不在本机跑：直接判断一个版本号
+./pg-cve-2026-6460-check.sh -V 16.15
+```
+
+结论有三种：
+
+- **OK**：已修。
+- **WARN**：已修但大版本停止维护（14 系列）；或者判断不了，比如版本号格式不认识、`-c` 连不上库。
+- **CRIT**：没修，或者是 13 及更早、没有修复版的大版本。
+
+**退出码**：0 全部已修，1 有 WARN，2 有 CRIT，3 本机没找到 PostgreSQL，64 用法错误。
+
+**实测**：在 Ubuntu 26.04 上装了官方源的 postgresql-18（18.6-0ubuntu0.26.04.1，还没修），本机程序和 `-c` 连库两项都判为 CRIT，退出码 2；按笔记里的办法换到 PostgreSQL 官方 apt 源、升到 18.7-1.pgdg26.04+2 并重启后，两项都变成 OK，退出码 0。卸掉以后再跑，提示没找到，退出码 3。另外用 `-V` 测了边界：18.6、17.11、16.15、14.24、13.22、9.6.24 判 CRIT，18.7、17.12、16.16、15.20 判 OK，14.25 判 WARN。容器检查这部分没有实际跑过，因为测试机上没有 Docker。脚本过了 shellcheck。
 
 ## apache-h2-cve-check.sh
 
