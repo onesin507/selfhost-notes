@@ -35,6 +35,8 @@ Self-hosting, dev tools & server hardening notes, written in Chinese.
 按日期倒序，每条一行：日期 · 主题 · 标题。
 
 <!-- INDEX:START -->
+- 2026-11-16 · selfhost · [Debian 12 内核 6.1.192-1（6.1.0-55）重启后几分钟死机：怎么查、怎么救、等哪个版本](selfhost/2026-11-16-debian12-kernel-6.1.192-1-ext4-freeze.md)
+- 2026-11-16 · scripts · [kernel-fallback-check.sh：重启前检查有没有能退回去的旧内核](scripts/README.md#kernel-fallback-checksh)
 - 2026-11-15 · security · [PostgreSQL 18.7 / 17.12 / 16.16 / 15.20 / 14.25 修了 52 个 CVE：普通账号就能执行系统命令，怎么查、怎么升](security/2026-11-15-postgresql-nov-2026-cves.md)
 - 2026-11-15 · scripts · [pg-cve-2026-6460-check.sh：检查本机和容器里的 PostgreSQL 有没有修](scripts/README.md#pg-cve-2026-6460-checksh)
 - 2026-11-14 · security · [Apache 2.4.71 修了 mod_http2 远程代码执行漏洞 CVE-2026-119618：怎么查、怎么修](security/2026-11-14-apache-mod-http2-rce.md)

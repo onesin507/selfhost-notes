@@ -13,6 +13,7 @@
 
 | 脚本 | 语言 | 用途 | 收录日期 |
 | --- | --- | --- | --- |
+| [kernel-fallback-check.sh](kernel-fallback-check.sh) | Bash | 升级内核、重启之前，检查有没有能退回去的旧内核，以及下次重启会进哪个内核（可标出已知有问题的版本） | 2026-11-16 |
 | [pg-cve-2026-6460-check.sh](pg-cve-2026-6460-check.sh) | Bash | 检查本机和 Docker / Podman 容器里的 PostgreSQL 有没有修 2026-11-12 这批漏洞（CVE-2026-6460 等） | 2026-11-15 |
 | [apache-h2-cve-check.sh](apache-h2-cve-check.sh) | Bash | 检查本机 Apache 有没有中 CVE-2026-119618（mod_http2 远程代码执行） | 2026-11-14 |
 | [cert-expiry-check.sh](cert-expiry-check.sh) | Bash | 检查线上站点和本地证书文件还剩几天过期，用退出码告警 | 2026-11-09 |
@@ -69,6 +70,59 @@ out=$(/usr/local/bin/cert-expiry-check.sh -q -f /etc/cert-targets.txt) || your-n
 - 本地文件只读第一张证书，`fullchain.pem` 和 `cert.pem` 的第一张都是叶子证书，结果一样。
 - 端口只支持 `主机名:端口` 写法，不支持裸 IPv6 地址。需要 STARTTLS 的端口（比如 SMTP 587）不在支持范围里，只支持一连上就是 TLS 的端口，如 443、993、995、465。
 - macOS 自带的 date 不是 GNU 版，要先装 coreutils。
+
+## kernel-fallback-check.sh
+
+内核更新偶尔会出事，比如 2026-11 Debian 12 的 6.1.192-1：重启后几分钟到几小时内整机卡死，背景见 [这篇笔记](../selfhost/2026-11-16-debian12-kernel-6.1.192-1-ext4-freeze.md)。出了事能不能救回来，取决于重启前的状态。这个脚本就是在重启前看一遍：
+
+- 现在跑的是哪个内核，下次重启默认进哪个（装着的最新那个）；
+- 除此之外还有没有 vmlinuz 和 initrd 都在的旧内核可以退回去；
+- 用 `-b` 指定的有问题版本是不是正在跑，或者下次重启就会进；
+- GRUB 默认启动项、启动菜单是不是隐藏的、unattended-upgrades 会不会自动重启、内核包有没有被 hold。
+
+只读，不改 GRUB，不装卸软件包，不重启。
+
+`-b` 同时匹配 `uname -r` 的写法（如 `6.1.0-55-cloud-arm64`）和内核包的版本号（如 `6.1.192-1`，从 dpkg 读）。Debian 的修复版常常沿用同一个 `uname -r`，这时一定要写包版本，不然修好的内核也会被判成坏的。
+
+**依赖**：bash 4+、coreutils（`sort -V`）、grep、sed；Debian / Ubuntu 上有 dpkg-query 时会显示包版本。适用于 `/boot` 下放 `vmlinuz-版本` 和 `initrd.img-版本`（或 `initramfs-版本.img`）的系统；用 systemd-boot / UKI 的机器结果只作参考。
+
+**常用写法**（示例）：
+
+```sh
+# 普通检查
+./kernel-fallback-check.sh
+
+# 这次 Debian 12 的情况：标出 6.1.192-1
+./kernel-fallback-check.sh -b 6.1.192-1
+
+# 救援模式下检查挂到 /mnt 的系统
+sudo ./kernel-fallback-check.sh -R /mnt -b 6.1.192-1
+
+# 放进 cron：只在有问题时输出
+./kernel-fallback-check.sh -q -b 6.1.192-1 || echo "这台重启前要先处理"
+```
+
+结论有四种：
+
+- **OK**：这一项没问题。
+- **INFO**：只是告诉你，比如 GRUB 菜单是隐藏的、开了自动重启。
+- **WARN**：没有可以退回去的旧内核；某个内核缺 initrd；正在跑的内核文件已经被删了；或者 `/boot` 下根本没有内核，判断不了。
+- **CRIT**：正在跑的内核，或者下次重启要进的内核，匹配 `-b` 指定的有问题版本。
+
+**退出码**：0 正常，1 有 WARN，2 有 CRIT，64 用法错误。
+
+**实测**：从 security.debian.org 下了 Debian 12 真实的内核包 linux-image-6.1.0-54-cloud-amd64（6.1.190-1）和 linux-image-6.1.0-55-cloud-amd64（6.1.192-1），解到一个测试目录里，用 `-R` 检查。
+- 正在跑 6.1.0-54、装了 6.1.192-1：「下次重启」判 CRIT，退路是 6.1.0-54，退出码 2。
+- 正在跑 6.1.192-1：「正在运行」和「下次重启」都判 CRIT，退出码 2。
+- 把包版本改成修复版 6.1.192-2、`uname -r` 不变：全部 OK，退出码 0。同样的情况写成 `-b 6.1.0-55`，会误判成 CRIT，所以上面要求写包版本。
+
+另外用假的 `/boot` 测了几种情况：
+- 只剩一个内核、正在跑的内核文件已被删掉：两条 WARN，退出码 1。
+- 旧内核缺 initrd：WARN，退出码 1。
+- GRUB 菜单隐藏、`GRUB_DEFAULT=saved`、开了自动重启：都显示成 INFO。
+- 一切正常时加 `-q`：不输出，退出码 0。
+
+在没有 `/boot` 内核的容器里跑，判为 WARN，退出码 1。没有在真的会重启的机器上跑过。脚本过了 shellcheck 0.11.0。
 
 ## pg-cve-2026-6460-check.sh
 
