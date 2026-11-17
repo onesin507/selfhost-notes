@@ -35,6 +35,9 @@ Self-hosting, dev tools & server hardening notes, written in Chinese.
 按日期倒序，每条一行：日期 · 主题 · 标题。
 
 <!-- INDEX:START -->
+- 2026-11-17 · security · [NoisyTCP（CVE-2026-99288）：只要开着 SSH 就可能被远程打崩内核，怎么查、怎么临时缓解](security/2026-11-17-noisytcp-cve-2026-99288.md)
+- 2026-11-17 · scripts · [noisytcp-check.sh：检查内核修没修 NoisyTCP、临时缓解开了没有](scripts/README.md#noisytcp-checksh)
+- 2026-11-17 · selfhost · [Redict 停更了，换 Valkey 不能只搬配置文件：RDB 格式不兼容，要先转成 AOF](selfhost/2026-11-17-redict-deprecated-migrate-to-valkey.md)
 - 2026-11-16 · selfhost · [Debian 12 内核 6.1.192-1（6.1.0-55）重启后几分钟死机：怎么查、怎么救、等哪个版本](selfhost/2026-11-16-debian12-kernel-6.1.192-1-ext4-freeze.md)
 - 2026-11-16 · scripts · [kernel-fallback-check.sh：重启前检查有没有能退回去的旧内核](scripts/README.md#kernel-fallback-checksh)
 - 2026-11-15 · security · [PostgreSQL 18.7 / 17.12 / 16.16 / 15.20 / 14.25 修了 52 个 CVE：普通账号就能执行系统命令，怎么查、怎么升](security/2026-11-15-postgresql-nov-2026-cves.md)

@@ -13,6 +13,7 @@
 
 | 脚本 | 语言 | 用途 | 收录日期 |
 | --- | --- | --- | --- |
+| [noisytcp-check.sh](noisytcp-check.sh) | Bash | 检查本机有没有修 NoisyTCP（CVE-2026-99288，内核 TCP 远程打崩），没修的话临时缓解开了没有 | 2026-11-17 |
 | [kernel-fallback-check.sh](kernel-fallback-check.sh) | Bash | 升级内核、重启之前，检查有没有能退回去的旧内核，以及下次重启会进哪个内核（可标出已知有问题的版本） | 2026-11-16 |
 | [pg-cve-2026-6460-check.sh](pg-cve-2026-6460-check.sh) | Bash | 检查本机和 Docker / Podman 容器里的 PostgreSQL 有没有修 2026-11-12 这批漏洞（CVE-2026-6460 等） | 2026-11-15 |
 | [apache-h2-cve-check.sh](apache-h2-cve-check.sh) | Bash | 检查本机 Apache 有没有中 CVE-2026-119618（mod_http2 远程代码执行） | 2026-11-14 |
@@ -70,6 +71,54 @@ out=$(/usr/local/bin/cert-expiry-check.sh -q -f /etc/cert-targets.txt) || your-n
 - 本地文件只读第一张证书，`fullchain.pem` 和 `cert.pem` 的第一张都是叶子证书，结果一样。
 - 端口只支持 `主机名:端口` 写法，不支持裸 IPv6 地址。需要 STARTTLS 的端口（比如 SMTP 587）不在支持范围里，只支持一连上就是 TLS 的端口，如 443、993、995、465。
 - macOS 自带的 date 不是 GNU 版，要先装 coreutils。
+
+## noisytcp-check.sh
+
+NoisyTCP 是 2026-11-15 公开的 Linux 内核 TCP 漏洞：只要有对外的 TCP 端口，网卡是多队列或开了 RPS，就可能被远程打到内核崩溃。背景和修法见 [这篇笔记](../security/2026-11-17-noisytcp-cve-2026-99288.md)。脚本查四件事：
+
+- 正在跑的内核修没修。Debian 12 / 13 按 `uname -v` 里的包版本对安全追踪页的修复版；Ubuntu 和 RHEL 系看内核包 changelog 里有没有 `CVE-2026-99288`；认不出的（云平台自带的、自己编的内核）写“确认不了”；
+- Debian 上修复版装了但还没重启进去；以及 Debian 12 正在跑会死机的 6.1.192-1；
+- 临时缓解生效没有：`net.ipv4.tcp_syncookies` 是不是 0，对外网卡（默认路由走的网卡）是不是只有 1 个收包队列、RPS 关；
+- 有没有监听在非回环地址上的 TCP 端口。
+
+只读，不改 sysctl，不动网卡，不用 root。`tcp_syncookies` 按网络命名空间算，脚本只看当前这个，发现本机有 Docker / Podman 时会提醒你容器要单独查。
+
+**依赖**：bash 4+、grep、sed、awk、iproute2（`ip`、`ss`）；看内核包时用 dpkg 或 rpm，查 changelog 用 zgrep。
+
+**常用写法**（示例）：
+
+```sh
+# 普通检查
+./noisytcp-check.sh
+
+# 指定网卡（可以写多个）
+./noisytcp-check.sh -i eth0 -i ens3
+
+# 放进 cron：只在有问题时输出
+./noisytcp-check.sh -q || echo "这台还没修也没缓解"
+
+# 不在 Debian 上也想看各种版本会怎么判：假装是 Debian 12，正在跑 6.1.191-1，已装 6.1.192-2
+./noisytcp-check.sh -D bookworm -V 6.1.191-1 -P 6.1.192-2
+```
+
+结论有四种：
+
+- **OK**：内核已修。
+- **INFO**：确认不了修没修，但缓解已经生效；或者只是告诉你网卡、端口、容器的情况。
+- **WARN**：没修但缓解生效；或没修、没缓解但没有对外端口；确认不了修没修、也没缓解；修复版装了没重启；Debian 12 在跑 6.1.192-1。
+- **CRIT**：没修、两种缓解都没生效、还有对外监听的 TCP 端口。
+
+**退出码**：0 正常，1 有 WARN，2 有 CRIT，64 用法错误。
+
+**实测**：过了 shellcheck。
+- Ubuntu 26.04（平台自带内核、单队列网卡）和 Debian 13（平台自带内核、单队列）上真跑：都判“确认不了、缓解二生效”，退出码 0。Debian 13 那台装了 Docker，也提醒了容器要单独查。
+- 在一个独立的网络命名空间里建了一块 4 队列的 dummy 网卡，开一个 0.0.0.0:8080 的监听，用 `-D bookworm -V 6.1.191-1` 假装没修：
+  - syncookies=1、4 队列：CRIT，退出码 2；
+  - 换成单队列、RPS 关的网卡：WARN（缓解二生效），退出码 1；把这块网卡的 `rps_cpus` 写成 f：变回 CRIT；
+  - `tcp_syncookies` 改成 0：WARN（缓解一生效），退出码 1；
+  - 关掉监听：WARN，退出码 1。
+- 版本判断：假装 Debian 12 跑 6.1.192-1 判 WARN（修了但会死机），跑 6.1.191-1、已装 6.1.192-2 判 WARN（重启后生效），已装 6.1.192-2 且 `-q` 无输出、退出码 0；Debian 13 跑 6.12.117-1 判 OK，6.12.116-1 判 WARN。
+- **没测到的**：没在装着发行版官方内核包的真机上跑过，查 Ubuntu / RHEL changelog 那段代码没碰到过真数据。
 
 ## kernel-fallback-check.sh
 
