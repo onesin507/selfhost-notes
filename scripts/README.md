@@ -13,6 +13,7 @@
 
 | 脚本 | 语言 | 用途 | 收录日期 |
 | --- | --- | --- | --- |
+| [nginx-h2-cve-check.sh](nginx-h2-cve-check.sh) | Bash | 检查本机 Nginx 有没有中 2026-11-18 这批漏洞（CVE-2026-123007 / 123633，HTTP/2 远程代码执行），升级后有没有重启 | 2026-11-20 |
 | [noisytcp-check.sh](noisytcp-check.sh) | Bash | 检查本机有没有修 NoisyTCP（CVE-2026-99288，内核 TCP 远程打崩），没修的话临时缓解开了没有 | 2026-11-17 |
 | [kernel-fallback-check.sh](kernel-fallback-check.sh) | Bash | 升级内核、重启之前，检查有没有能退回去的旧内核，以及下次重启会进哪个内核（可标出已知有问题的版本） | 2026-11-16 |
 | [pg-cve-2026-6460-check.sh](pg-cve-2026-6460-check.sh) | Bash | 检查本机和 Docker / Podman 容器里的 PostgreSQL 有没有修 2026-11-12 这批漏洞（CVE-2026-6460 等） | 2026-11-15 |
@@ -71,6 +72,40 @@ out=$(/usr/local/bin/cert-expiry-check.sh -q -f /etc/cert-targets.txt) || your-n
 - 本地文件只读第一张证书，`fullchain.pem` 和 `cert.pem` 的第一张都是叶子证书，结果一样。
 - 端口只支持 `主机名:端口` 写法，不支持裸 IPv6 地址。需要 STARTTLS 的端口（比如 SMTP 587）不在支持范围里，只支持一连上就是 TLS 的端口，如 443、993、995、465。
 - macOS 自带的 date 不是 GNU 版，要先装 coreutils。
+
+## nginx-h2-cve-check.sh
+
+检查本机的 Nginx 有没有中 2026-11-18 公布的那批漏洞，重点是两个 HTTP/2 远程代码执行（CVE-2026-123007、CVE-2026-123633，背景见 [这篇笔记](../security/2026-11-20-nginx-http2-rce.md)）。它看四件事：
+
+1. nginx 的包版本有没有到各发行版的修复版本；nginx.org 官方源的包和自己编译的，看上游版本号是否 >= 1.30.7 / 1.31.9；
+2. 生效配置（`nginx -T`）里有没有开 HTTP/2，`listen ... http2` 和 `http2 on;` 两种写法都认，注释掉的不算；
+3. 顺带提示有没有开 HTTP/3、有没有反向代理（对应同批另外两个漏洞的条件）；
+4. 正在跑的 nginx 进程是不是升级前的旧程序（升级了没重启）。
+
+只读，不改配置，不重启服务。
+
+```bash
+sudo ./nginx-h2-cve-check.sh
+
+# 只在有问题时出声，适合放 cron
+sudo ./nginx-h2-cve-check.sh -q || echo "这台的 Nginx 要处理"
+
+# 不在本机跑：把别的机器 dpkg-query -W nginx 的版本贴进来，配上发行版代号
+./nginx-h2-cve-check.sh -P 1.24.0-2ubuntu7.19 -C noble
+
+# Docker 容器 / nginx.org 官方包：只判断上游版本号
+./nginx-h2-cve-check.sh -V "$(docker exec web nginx -v 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
+```
+
+结论有三种：
+
+- **OK**：已修复，或者本机没装 Nginx。
+- **WARN**：版本没修但 HTTP/2 没开；包已经升级但进程没重启；或者有一项判断不了。
+- **CRIT**：版本没修，而且 HTTP/2 开着，要尽快升级并重启。暂时升不了就先关 HTTP/2。
+
+**退出码**：0 OK，1 WARN，2 CRIT，64 用法错误。
+
+**实测**：在 Ubuntu 26.04 上用真实的两版官方包跑过。先装没修的 1.28.3-2ubuntu1：默认配置判 WARN；加上一个开了 HTTP/2 的站（curl 确认确实走的 HTTP/2）判 CRIT。再在 nginx 运行中升到修复版 1.28.3-2ubuntu1.14：没重启时判 WARN 并提示重启，重启后判 OK。`listen ... http2`、`http2 on;`、注释掉的 http2、HTTP/3、proxy_pass 都识别对了。上游版本边界：1.30.6、1.31.8 判 WARN，1.30.7、1.31.9、1.32.0 判 OK。Debian / Ubuntu 包版本边界（如 1.24.0-2ubuntu7.19 / 7.20、1.22.1-9+deb12u10 / u11）也对。没测到的：nginx.org 官方源包的识别、非 Debian 系系统。脚本过了 shellcheck。
 
 ## noisytcp-check.sh
 
