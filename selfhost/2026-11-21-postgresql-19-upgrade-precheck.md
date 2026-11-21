@@ -1,6 +1,6 @@
 # PostgreSQL 19 发布了：升级前先查这几项，有的会让 pg_upgrade 直接拒绝
 
-**一句话结论**：PostgreSQL 19 在 2026-11-19 发布。大版本升级要么 dump/restore，要么用 pg_upgrade 或逻辑复制，不能只换包。这次的不兼容变更里，有三项会让升级当场卡住（名字里带换行、btree_gist 的 inet/cidr 索引、MULE_INTERNAL 编码），还有几项不拦升级但升完会出问题（RADIUS 认证被删、`io_workers` 参数被删、部分索引要重建）。升级前先跑一遍配套脚本 [pg19-upgrade-precheck.sh](../scripts/README.md#pg19-upgrade-precheck.sh)，它只读不改。
+**一句话结论**：PostgreSQL 19 在 2026-11-19 发布。大版本升级要么 dump/restore，要么用 pg_upgrade 或逻辑复制，不能只换包。这次的不兼容变更里，有三项会让升级当场卡住（名字里带换行、btree_gist 的 inet/cidr 索引、MULE_INTERNAL 编码），还有几项不拦升级但升完会出问题（RADIUS 认证被删、`io_workers` 参数被删、部分索引要重建）。升级前先跑一遍配套脚本 [pg19-upgrade-precheck.sh](../scripts/README.md#pg19-upgrade-prechecksh)，它只读不改。
 
 - 来源：PostgreSQL 官方发布公告《PostgreSQL 19 Released!》，2026-11-19
   https://www.postgresql.org/about/news/postgresql-19-released-3449/
