@@ -73,6 +73,36 @@ out=$(/usr/local/bin/cert-expiry-check.sh -q -f /etc/cert-targets.txt) || your-n
 - 端口只支持 `主机名:端口` 写法，不支持裸 IPv6 地址。需要 STARTTLS 的端口（比如 SMTP 587）不在支持范围里，只支持一连上就是 TLS 的端口，如 443、993、995、465。
 - macOS 自带的 date 不是 GNU 版，要先装 coreutils。
 
+## pg19-upgrade-precheck.sh
+
+升级到 PostgreSQL 19 之前的只读体检（背景见 [这篇笔记](../selfhost/2026-11-21-postgresql-19-upgrade-precheck.md)）。对照官方 19 版发布说明的「Migration to Version 19」，检查：
+
+1. 会让 pg_upgrade 直接拒绝的：数据库 / 角色 / 表空间名字里有回车换行、btree_gist 的 inet/cidr 索引、MULE_INTERNAL 编码；
+2. 升级后要重建的索引：非 libc 区域的库里用全文检索或 pg_trgm 的索引，所有库里用 fuzzystrmatch 函数的索引；
+3. 认证：pg_hba.conf 里的 radius / md5 规则，仍用 MD5 存密码的角色；
+4. 配置：`standard_conforming_strings = off`、写了 `io_workers`、手动设过 `max_locks_per_transaction`、JIT 默认值变化；
+5. 每个库装的扩展清单，数据目录大小和剩余磁盘空间（够不够 pg_upgrade 复制一份）。
+
+只跑 SELECT / SHOW，不改数据、不改配置。需要超级用户。
+
+```bash
+sudo -u postgres ./pg19-upgrade-precheck.sh
+./pg19-upgrade-precheck.sh --sudo                 # 脚本自己 sudo -u postgres
+PGHOST=db PGUSER=admin ./pg19-upgrade-precheck.sh # 连别的实例
+./pg19-upgrade-precheck.sh --docker pg            # Docker 容器（-U 指定用户，默认 postgres）
+./pg19-upgrade-precheck.sh --sudo -q || echo "升 19 前要处理"   # 只在有问题时出声
+```
+
+结论有三档：
+
+- **BLOCK**：不处理就升不上去。
+- **WARN**：升级前后要处理。
+- **OK / INFO**：没问题，或仅供参考。
+
+**退出码**：0 没问题，1 有 WARN，2 有 BLOCK，64 用法错误。
+
+**实测**：Ubuntu 26.04 + PostgreSQL 18.6。干净集群全部 OK、退出码 0。造了一个带问题的集群（ICU 库里的 btree_gist inet 索引、pg_trgm / 全文检索 / soundex 索引，名字带换行的角色，MD5 密码角色，pg_hba 里的 md5 和 radius 规则，io_workers、max_locks_per_transaction、standard_conforming_strings = off），全部报出，退出码 2；libc 库里的 pg_trgm 索引没有误报。没测到：MULE_INTERNAL 编码、`--docker` 模式、真实的 18→19 pg_upgrade。脚本过了 shellcheck。
+
 ## nginx-h2-cve-check.sh
 
 检查本机的 Nginx 有没有中 2026-11-18 公布的那批漏洞，重点是两个 HTTP/2 远程代码执行（CVE-2026-123007、CVE-2026-123633，背景见 [这篇笔记](../security/2026-11-20-nginx-http2-rce.md)）。它看四件事：

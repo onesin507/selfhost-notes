@@ -35,6 +35,8 @@ Self-hosting, dev tools & server hardening notes, written in Chinese.
 按日期倒序，每条一行：日期 · 主题 · 标题。
 
 <!-- INDEX:START -->
+- 2026-11-21 · selfhost · [PostgreSQL 19 发布了：升级前先查这几项，有的会让 pg_upgrade 直接拒绝](selfhost/2026-11-21-postgresql-19-upgrade-precheck.md)
+- 2026-11-21 · scripts · [pg19-upgrade-precheck.sh：升级 PostgreSQL 19 之前的只读体检](scripts/README.md#pg19-upgrade-precheck.sh)
 - 2026-11-20 · security · [Nginx 1.30.7 / 1.31.9 修了两个 HTTP/2 远程代码执行漏洞：怎么查、怎么修](security/2026-11-20-nginx-http2-rce.md)
 - 2026-11-20 · scripts · [nginx-h2-cve-check.sh：检查本机 Nginx 有没有中这批 HTTP/2 漏洞](scripts/README.md#nginx-h2-cve-checksh)
 - 2026-11-17 · security · [NoisyTCP（CVE-2026-99288）：只要开着 SSH 就可能被远程打崩内核，怎么查、怎么临时缓解](security/2026-11-17-noisytcp-cve-2026-99288.md)
